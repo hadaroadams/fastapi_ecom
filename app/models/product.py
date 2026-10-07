@@ -8,6 +8,8 @@ class Product(Base):
     __tablename__ = "products"
     id: Mapped[int] = mapped_column(primary_key=True)
     name: Mapped[str] = mapped_column(String(200))
+    sku: Mapped[str] = mapped_column(String(50), unique=True, index=True)
     price_pesewas: Mapped[int] = mapped_column()
     stock: Mapped[int] = mapped_column(default=0)
     description: Mapped[str | None] = mapped_column(Text)
+
