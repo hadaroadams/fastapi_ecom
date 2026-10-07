@@ -21,6 +21,7 @@ def get_products(db: DbSession):
 
     return {
         "message": "Products received successfully",
+        # "data": products,
         "data": [ProductRead.model_validate(product) for product in products],
     }
 
