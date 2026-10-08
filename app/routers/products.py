@@ -3,16 +3,12 @@ from typing import Annotated
 from fastapi import APIRouter, HTTPException, Depends, Query
 from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
-from sqlalchemy.orm import Session
 
-from app.db.session import get_db
 from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
-
+from app.db.deps import DbSession
 
 router = APIRouter(prefix="/products", tags=["products"])
-
-DbSession = Annotated[Session, Depends(get_db)]
 
 
 def get_product_or_404(product_id: int, db: DbSession) -> Product:

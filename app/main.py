@@ -1,6 +1,7 @@
 from fastapi import FastAPI
 from app.core.config import settings
 from app.routers import products
+from app.routers import auth
 
 from app.db.base import Base
 from app.db.session import engine
@@ -10,6 +11,7 @@ Base.metadata.create_all(bind=engine)
 
 
 app = FastAPI(title=settings.app_name, version=settings.version)
+app.include_router(auth.router)
 app.include_router(products.router)
 
 
