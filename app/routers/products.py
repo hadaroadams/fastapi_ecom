@@ -1,7 +1,7 @@
 from typing import Annotated
 
-from fastapi import APIRouter, HTTPException, Depends
-from sqlalchemy import select
+from fastapi import APIRouter, HTTPException, Depends, Query
+from sqlalchemy import select, func
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
@@ -15,21 +15,38 @@ router = APIRouter(prefix="/products", tags=["products"])
 DbSession = Annotated[Session, Depends(get_db)]
 
 
+def get_product_or_404(product_id: int, db: DbSession) -> Product:
+    product = db.get(Product, product_id)
+    if product is None:
+        raise HTTPException(status_code=404, detail="product not found")
+    return product
+
+
+ProductDep = Annotated[Product, Depends(get_product_or_404)]
+
+
 @router.get("")
-def get_products(db: DbSession):
-    products = db.scalars(select(Product)).all()
+def get_products(
+    db: DbSession,
+    limit: Annotated[int, Query(ge=1, le=100)] = 20,
+    offset: Annotated[int, Query(ge=0)] = 0,
+    search: str | None = None,
+):
+    stmt = select(Product)
+    if search:
+        stmt = stmt.where(Product.name.ilike(f"%{search}%"))
+    total = db.scalar(select(func.count()).select_from(stmt.subquery()))
+    products = db.scalars(stmt.order_by(Product.id).limit(limit).offset(offset)).all()
 
     return {
         "message": "Products received successfully",
-        "data": [ProductRead.model_validate(product) for product in products],
+        "data": [ProductRead.model_validate(p) for p in products],
+        "meta": {"total": total, "limit": limit, "offset": offset},
     }
 
 
 @router.get("/{product_id}")
-def get_product(product_id: int, db: DbSession):
-    product = db.get(Product, product_id)
-    if product is None:
-        raise HTTPException(status_code=404, detail="product not found")
+def get_product(product: ProductDep):
 
     return {
         "message": "product found successfully",
@@ -56,11 +73,7 @@ def create_product(product: ProductCreate, db: DbSession):
 
 
 @router.patch("/{product_id}")
-def update_product(product_id: int, changes: ProductUpdate, db: DbSession):
-    product = db.get(Product, product_id)
-
-    if product is None:
-        raise HTTPException(status_code=404, detail="product not found")
+def update_product(changes: ProductUpdate, product: ProductDep, db: DbSession):
 
     for field, value in changes.model_dump(exclude_unset=True).items():
         setattr(product, field, value)
@@ -78,11 +91,7 @@ def update_product(product_id: int, changes: ProductUpdate, db: DbSession):
 
 
 @router.delete("/{product_id}", status_code=204)
-def delete_product(product_id: int, db: DbSession):
-    product = db.get(Product, product_id)
-
-    if product is None:
-        raise HTTPException(status_code=404, detail="product not found")
+def delete_product(db: DbSession, product: ProductDep):
 
     db.delete(product)
     db.commit()
