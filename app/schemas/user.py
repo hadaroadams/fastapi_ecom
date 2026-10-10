@@ -17,4 +17,4 @@ class UserRead(BaseModel):
     email: EmailStr
     # hashed_password: str
     is_admin: bool
-    create_at: datetime
+    created_at: datetime

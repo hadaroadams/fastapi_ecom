@@ -15,6 +15,6 @@ class User(Base):
     hashed_password: Mapped[str] = mapped_column(String(255))
     is_active: Mapped[bool] = mapped_column(default=True)
     is_admin: Mapped[bool] = mapped_column(default=False)
-    create_at: Mapped[datetime] = mapped_column(
+    created_at: Mapped[datetime] = mapped_column(
         DateTime(timezone=True), server_default=func.now()
     )
