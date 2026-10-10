@@ -7,6 +7,7 @@ from sqlalchemy.exc import IntegrityError
 from app.models.product import Product
 from app.schemas.product import ProductCreate, ProductRead, ProductUpdate
 from app.db.deps import DbSession
+from app.core.auth import require_admin
 
 router = APIRouter(prefix="/products", tags=["products"])
 
@@ -50,7 +51,7 @@ def get_product(product: ProductDep):
     }
 
 
-@router.post("", status_code=201)
+@router.post("", status_code=201, dependencies=[Depends(require_admin)])
 def create_product(product: ProductCreate, db: DbSession):
 
     db_product = Product(**product.model_dump())
@@ -68,7 +69,7 @@ def create_product(product: ProductCreate, db: DbSession):
     }
 
 
-@router.patch("/{product_id}")
+@router.patch("/{product_id}", dependencies=[Depends(require_admin)])
 def update_product(changes: ProductUpdate, product: ProductDep, db: DbSession):
 
     for field, value in changes.model_dump(exclude_unset=True).items():
@@ -86,7 +87,7 @@ def update_product(changes: ProductUpdate, product: ProductDep, db: DbSession):
     }
 
 
-@router.delete("/{product_id}", status_code=204)
+@router.delete("/{product_id}", status_code=204, dependencies=[Depends(require_admin)])
 def delete_product(db: DbSession, product: ProductDep):
 
     db.delete(product)
