@@ -10,6 +10,7 @@ from app.models.cart import CartItem
 from app.models.product import Product
 from app.schemas.cart import CartItemAdd, CartItemRead, CartItemUpdate, CartRead
 
+
 router = APIRouter(prefix="/cart", tags=["cart"])
 
 
