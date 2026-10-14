@@ -1,3 +1,4 @@
+import secrets
 from typing import Annotated
 
 from fastapi import APIRouter, HTTPException, Depends
@@ -8,8 +9,10 @@ from app.core.auth import CurrentUser
 from app.db.deps import DbSession
 from app.models.cart import CartItem
 from app.models.order import Order, OrderStatus, OrderItem
+from app.models.payment import Payment
 from app.models.product import Product
 from app.schemas.order import OrderRead
+from app.services.paystack import PaystackError, initialize_transaction
 
 router = APIRouter(prefix="/orders", tags=["orders"])
 
@@ -137,4 +140,37 @@ def cancel_order(order: OrderDep, db: DbSession):
     return {
         "message": "Order cancelled successfully",
         "order": OrderRead.model_validate(order),
+    }
+
+
+@router.post("{order_id}/pay")
+def pay_for_order(order: OrderDep, user: CurrentUser, db: DbSession):
+    if order.status != OrderStatus.PENDING:
+        raise HTTPException(status_code=409, detail="Only pending orders can be paind")
+    reference = f"ord{order.id}-{secrets.token_hex(8)}"
+
+    try:
+        authorization_url = initialize_transaction(
+            email=user.email,
+            amount_pesewas=order.total_pesewas,
+            reference=reference,
+            order_id=order.id,
+        )
+    except PaystackError:
+        raise HTTPException(
+            status_code=502, detail="Payment provider unavailable, please try again"
+        )
+
+    db.add(
+        Payment(
+            order_id=order.id,
+            reference=reference,
+            amount_pesewas=order.total_pesewas,
+        )
+    )
+    db.commit()
+
+    return {
+        "message": "payment initialized",
+        "data": {"authorization_url": authorization_url, "reference": reference},
     }

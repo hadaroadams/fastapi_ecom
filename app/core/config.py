@@ -8,7 +8,9 @@ class setting(BaseSettings):
     database_url: str
     model_config = SettingsConfigDict(env_file=".env.local")
     secrete_key: str
-    access_token_expire_minutes: int=30
+    access_token_expire_minutes: int = 30
+    paystack_secret_key: str
+    paystack_callback_url: str = "http://localhost:3000/payment/callback"
 
 
 settings = setting()

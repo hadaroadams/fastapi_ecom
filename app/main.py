@@ -4,7 +4,7 @@ from app.core.config import settings
 from app.db.base import Base
 from app.db.session import engine
 from app.models import product as product_model
-from app.routers import products
+from app.routers import payments, products
 from app.routers import auth
 from app.routers import cart
 from app.routers import order
@@ -17,6 +17,7 @@ app.include_router(auth.router)
 app.include_router(products.router)
 app.include_router(cart.router)
 app.include_router(order.router)
+app.include_router(payments.router)
 
 
 @app.get("/health")
