@@ -8,6 +8,7 @@ os.environ["DATABASE_URL"] = (
 )
 os.environ["PAYSTACK_SECRET_KEY"] = "sk_test_fake_key_for_tests"
 os.environ["DEBUG"] = "false"
+os.environ["CORS_ORIGINS"] = '["https://shop.example.com"]'
 
 from app.core.security import create_access_token, hash_password
 import pytest  # noqa: E402
@@ -21,6 +22,7 @@ from app.db.session import sessionLocal, engine  # noqa: E402
 from app.main import app  # noqa: E402
 from app.models.product import Product  # noqa: E402
 from app.models.user import User
+from app.core.rate_limit import limiter
 
 # 2. Safety catch: never run tests against the real database.
 assert "test" in settings.database_url, "Tests must use the test database!"
@@ -101,3 +103,41 @@ def other_customer_headers(db):
 @pytest.fixture
 def admin_headers(db):
     return auth_headers(create_user(db, "admin@example.com", is_admin=True))
+
+
+@pytest.fixture(autouse=True)
+def reset_rate_limits():
+    limiter.reset()
+
+def test_security_headers_are_present(client):
+    response = client.get("/health")
+
+    assert response.headers["X-Content-Type-Options"] == "nosniff"
+    assert response.headers["X-Frame-Options"] == "DENY"
+
+
+def test_cors_allows_the_configured_website(client):
+    response = client.options(
+        "/products",
+        headers={"Origin": "https://shop.example.com", "Access-Control-Request-Method": "GET"},
+    )
+
+    assert response.headers["access-control-allow-origin"] == "https://shop.example.com"
+
+
+def test_cors_blocks_other_websites(client):
+    response = client.options(
+        "/products",
+        headers={"Origin": "https://evil.example.com", "Access-Control-Request-Method": "GET"},
+    )
+
+    assert "access-control-allow-origin" not in response.headers
+
+
+def test_login_is_rate_limited(client):
+    for _ in range(5):
+        response = client.post("/auth/login", data={"username": "x@example.com", "password": "wrong-password"})
+        assert response.status_code == 401
+
+    response = client.post("/auth/login", data={"username": "x@example.com", "password": "wrong-password"})
+    assert response.status_code == 429

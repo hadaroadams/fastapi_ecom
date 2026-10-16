@@ -1,5 +1,6 @@
 from typing import Annotated
 
+from fastapi import Request
 from fastapi import APIRouter, Depends, HTTPException
 from fastapi.security import OAuth2PasswordRequestForm
 from sqlalchemy import select
@@ -12,12 +13,14 @@ from app.models.user import User
 from app.core.security import hash_password, verify_password, create_access_token
 from app.db.deps import DbSession
 from app.core.auth import CurrentUser
+from app.core.rate_limit import limiter
 
 router = APIRouter(prefix="/auth", tags=["auth"])
 
 
 @router.post("/register", status_code=201)
-def register_user(db: DbSession, user_in: UserCreate):
+@limiter.limit("3/hour")
+def register_user(request: Request,db: DbSession, user_in: UserCreate):
 
     user = User(
         full_name=user_in.full_name,
@@ -40,7 +43,8 @@ def register_user(db: DbSession, user_in: UserCreate):
 
 
 @router.post("/login")
-def login_user(form: Annotated[OAuth2PasswordRequestForm, Depends()], db: DbSession):
+@limiter.limit("5/minute")
+def login_user(request:Request,form: Annotated[OAuth2PasswordRequestForm, Depends()], db: DbSession):
     user = db.scalar(select(User).where(User.email == form.username.lower()))
 
     if user is None or not verify_password(form.password, user.hashed_password):

@@ -11,6 +11,7 @@ class setting(BaseSettings):
     access_token_expire_minutes: int = 30
     paystack_secret_key: str
     paystack_callback_url: str = "http://localhost:3000/payment/callback"
+    cors_origins: list[str] = []
 
 
 settings = setting()
