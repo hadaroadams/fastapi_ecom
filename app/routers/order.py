@@ -143,7 +143,7 @@ def cancel_order(order: OrderDep, db: DbSession):
     }
 
 
-@router.post("{order_id}/pay")
+@router.post("/{order_id}/pay")
 def pay_for_order(order: OrderDep, user: CurrentUser, db: DbSession):
     if order.status != OrderStatus.PENDING:
         raise HTTPException(status_code=409, detail="Only pending orders can be paind")
